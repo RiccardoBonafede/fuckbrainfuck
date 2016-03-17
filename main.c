@@ -11,7 +11,7 @@ void _mem_allocation_error();
 
 
 int main(int argc,char *argv[]){
-	printf("FROSINONE CULONE. \n"); //mcillo loves printf
+	puts("FROSINONE CULONE. \n"); //mcillo hates printf
 	FILE *progInput;
 	
 	char *progByte, *progOutPut;
