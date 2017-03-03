@@ -2,154 +2,128 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "main.h"
+#include "utils.h"
+#include "core.h"
+
 
 
 /*void push(struct STACK *s, int ele);
 int pop(struct STACK *s);*/
 	
 void _mem_allocation_error();
+size_t insertIntoArray(void ** arrayPtr, void * bytes, size_t bytes_to_write,size_t ndata ,size_t array_size);
+
+
 
 
 int main(int argc,char *argv[]){
-	FILE *progInput;
 	
-	char *progByte, *progOutPut;
-	unsigned char *progStack;
-	int progIndex=0, pc=0, stacklen=0, outlen=0, i=0;
-	int errors=0, whitechars=0, o=0, programSize=0;
-	char deb=0;
-
+	int errors=0, whitechars=0;
+	char deb;
+	struct memory_8b *program;
 
 	//controlla se ci sono tutti gli argomenti
 	if(argc<2){
-		fprintf(stderr, "Usage: brainfuck <progfile> (--debug)\n");
+		fprintf(stderr, "Usage: %s <progfile> (--debug)\n", argv[0]);
 		exit(0);
 	};
 	//guarda se è abilitata l'opzione "debug"
 	if(argc>=3 && !strcmp(argv[2], "--debug"))
 		deb=1;
-	//prova ad aprire il file. Se fallisce esce
-	if((progInput=fopen(argv[1], "r"))==NULL){
-		fprintf(stderr, "Error: Cannot open file %s\n", argv[1]);
-		exit(0);
-	};
-	//inizializza memoria per programma
-	progByte=(char *)malloc(sizeof(char));
+	else 
+		deb=0;
 	
-	if(progByte==0)_mem_allocation_error();
-	
-	
-	char c=0;
-	//Legge il codice dal file
-	while(!feof(progInput)){
+	program = calloc(1, sizeof(struct memory_8b));
+	if(program== NULL) _mem_allocation_error(__func__);
 
-		fscanf(progInput, "%c", &c);
-		
+	program = load_file_8b(argv[1], program);
 
-		if(c=='+' || c=='-' || c=='<' || c=='>' || c=='.' || c==',' || c=='[' || c==']'){	//ignora tutto il resto
-			progByte=(char *)realloc(progByte, (++i)*sizeof(char));
-			if(progByte==0)_mem_allocation_error();
-
-			progByte[i-1]=c;
-		}
-		c=0;
+	if(program->programSize <= 0){
+		free(program->programCode);
+		free(program);
 
 	}
-	
-	fclose(progInput);
+	if(deb)printf("<DEBUG>Prog data(%i):\n%s\n<DEBUG>End prog data\n<DEBUG>starting Program\n",program->programSize, program->programCode);
 
-	programSize=i;
-	i=0;
+	program->stackSize = START_STACK_SIZE;
+	program->programStack = calloc(program->stackSize, sizeof(char));
 
-	if(deb)printf("[*]Prog data(%i):\n%s\n[*]End prog data\n[*]starting Program\n",programSize, progByte);
+	if(program->programStack == NULL)_mem_allocation_error(__func__);
 
-	
-	progStack=(char *)calloc(++stacklen, sizeof(char));
-	progOutPut=(char *)calloc(++outlen, sizeof(char));
-
-	if(!progStack || !progOutPut)_mem_allocation_error();
 	
 	//main loop
-	while(1){
-		if(pc>(programSize-1))
-				break;
+	while(program->pc <= program->programSize){
 
-		if(deb)printf("[%i::%i::%c] <%i> = %i\n", o, pc,progByte[pc],progIndex, progStack[progIndex]);
+		if(deb)printf("[%i::%i::%c] <%i> = %i\n", program->cyclesNumber, program->pc,program->programCode[program->pc],program->accumulator, program->programStack[program->accumulator]);
 
-		switch(progByte[pc]){
+		switch(program->programCode[program->pc]){
 			//+:aumenta cella di memoria puntata dall'accumulatore 
-			case '+':
-				if(progStack[progIndex]>=255)
-					errors++;
-				progStack[progIndex]++;
+			case T_ADD:
+				if(program->programStack[program->accumulator]>=255){
+					program->programStack[program->accumulator] = 0;
+					break;
+				}
+				program->programStack[program->accumulator]++;
 				
 				break;
 			//-: diminuisce cella di memoria puntata dall'accumulatore
-			case '-':
-				if(progStack[progIndex]<0)
-					errors++;
-				progStack[progIndex]--;
+			case T_SUB:
+				if(program->programStack[program->accumulator]<=0){
+					program->programStack[program->accumulator] = 255;
+					break;
+				}
+				program->programStack[program->accumulator]--;
 				
 				break;
 			//>: aumenta accumulatore
-			case '>':
+			case T_MOV_R:
 
-				if(progIndex<(stacklen-1))
-					progIndex++;
+				if(program->accumulator<(program->stackSize-1))
+					program->accumulator++;
 				else{
-					progStack=(char *)realloc(progStack, stacklen*2);
-					if(progStack==0)_mem_allocation_error();
-
-					
-					stacklen*=2;
-					progIndex++;
-					progStack[progIndex]=0;
+					program->programStack=realloc(program->programStack, program->stackSize*2);
+					if(program->programStack==0)_mem_allocation_error(__func__);
+					program->stackSize*=2;
+					program->accumulator++;
+					program->programStack[program->accumulator]=0;
 				}
 
 				break;
 			//<: diminuisce accumulatore
-			case '<':
-				if(progIndex>=1)
-					progIndex--;
+			case T_MOV_L:
+				if(program->accumulator>=1)
+					program->accumulator--;
 				else
 					errors++;
 				break;
 			//. :salva nel buffer dell'output
-			case '.':
+			case T_PRINT:
 
-				progOutPut=(char *)realloc(progOutPut, ++outlen); //rialloca e controlla eventuali errori
-				if(progOutPut==0)_mem_allocation_error();
+				if(!deb)putchar(program->programStack[program->accumulator]);
 
-				progOutPut[outlen-1]=0;
-				progOutPut[outlen-2]=progStack[progIndex];
-
-				if(!deb)putchar(progStack[progIndex]);
 				break;
 			//, :Scrive l'output corrente, e lo bufferizza;salva nella cella puntata dall'acumulatore un carattere
-			case ',':
-				if(outlen>0 && deb){
+			case T_INPUT:
 
-					printf("Program asks \"%s\" >", progOutPut);
-					free(progOutPut);
-
-					outlen=1;
-					progOutPut=(char *)malloc(outlen);
-					if(progOutPut==0)_mem_allocation_error();
+				if(deb){
+					printf("Program asks $");
 				}
-					progStack[progIndex]=getchar();
-					fflush(stdin);
-				break;
-			case '[':
 
-				if(progStack[progIndex]==0){
+				program->programStack[program->accumulator]=getchar();
+				fflush(stdin);
+				break;
+			case T_WHILE_START:
+
+				if(program->programStack[program->accumulator]==0){
 					int brackets=0;
 
-					while(1){
+					while( program->pc < program->programSize){
 						
-						if(progByte[++pc]=='[')
+						if(program->programCode[++program->pc] == T_WHILE_START)
 							brackets++;
 
-						else if(progByte[pc]==']'){
+						else if(program->programCode[program->pc] == T_WHILE_END){
 							if(brackets==0){
 								break;
 							}
@@ -157,52 +131,52 @@ int main(int argc,char *argv[]){
 								brackets--;
 						}
 					}
+					if( program->pc == program->programSize && program->programCode[program->pc] != T_WHILE_END){
+						fprintf(stderr, "<CRITICAL:%s>\n Unexpected end of file. Maybe missing an %c?\n", __func__ ,T_WHILE_END);
+						exit(EXIT_FAILURE);
+					}
 				}	
 				break;
-			case ']':
-				if(progStack[progIndex]!=0){
+			case T_WHILE_END:
+				if(program->programStack[program->accumulator]!=0){
 					int brackets=0;
 				
-					while(1){
+					while(program->pc > 0){
 						
-						if(progByte[--pc]==']')
+						if(program->programCode[--program->pc]==T_WHILE_END)
 							brackets++;
 							
-						else if(progByte[pc]=='['){
+						else if(program->programCode[program->pc]==T_WHILE_START){
 							if(brackets==0)
 								break;	
 							else
 								brackets--;
 						}
+					}
 				}
-			}
+				if( program->pc == 0&& program->programCode[program->pc] != T_WHILE_START){
+						fprintf(stderr, "<CRITICAL:%s>\n Unexpected %c.\n", __func__ ,T_WHILE_END);
+						exit(EXIT_FAILURE);
+					}
 				break;
 			default:
-				whitechars++; //Questo non dovrebbe accadere
+				fprintf(stderr, "<WARNING:%s>\n Unexpected %c, something weird is happening here.\n", __func__ , program->programCode[program->pc]);
 				break;
 			}
 			
-			o++; //incrementa numero di cicli
-			pc++; //incrementa program counter
+			program->cyclesNumber++; //incrementa numero di cicli
+			program->pc++; //incrementa program counter
 	
 		}
-
-		progOutPut[outlen]=0; //termina buffer
+		fflush(stdout);
+		//progOutPut[outlen]=0; //termina buffer
 
 		if(deb){
-			printf("[*]white chars:%i\n[*]errors:%i\n[*]action:%i\n" , whitechars, errors,o);
-			printf("[*]Program output (%i bytes)\n", outlen);
-			for(i=0;i<outlen;i++)
-				printf("%i ", progOutPut[i]);
+			printf("[*]white chars:%i\n[*]errors:%i\n[*]action:%i\n" , whitechars, errors, program->cyclesNumber++);
 			printf("\n[*]End of execution\n");
 		}
-		free(progStack);
-		free(progByte);
-		free(progOutPut);
-}
-
-void _mem_allocation_error(){
-		fprintf(stderr, "%s\n", "error while allocating new memory\n");
-		exit(-1);
+		free(program->programStack);
+		free(program->programCode);
+		free(program);
 }
 
