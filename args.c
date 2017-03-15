@@ -6,7 +6,7 @@
 #include "core.h"
 #include "args.h"
 
-#define ARGUMENTS "b:h"
+#define ARGUMENTS "b:hd"
 
 /*bitwidth possible values*/
 #define BITWIDTH8 "8"
@@ -29,23 +29,24 @@ struct options* parse_args(int argc, char *argv[]){
     				help_exit(argv[0], EXIT_FAILURE, (void *)opt);
     			//if is an accepted value
        			if(!strcmp(optarg, BITWIDTH8) ||  !strcmp(optarg, BITWIDTH16) || !strcmp(optarg, BITWIDTH32)){
+              //calculate take the value and calculate the log. This is the corresponding bitwitdh
        				char bit=atoi(optarg);
               bit /= 4;
-       				//calculate log2(optarg)
        				while (bit >>= 1) opt->type++;
 
        			} else{
        				help_exit(argv[0], EXIT_FAILURE, (void *)opt);
        			}
  	       break;
-    		case 'h':
+         case 'h':
     	    	help_exit(argv[0], EXIT_SUCCESS, (void *)opt);
-    	    	break;
-       		break;
-    			case ':':
+    	   break;
+        case 'd':
+            opt->debug = 1;	
+    		case ':':
        		 	printf("-%c  need a filename!\n", optopt);
        		break;
-    			case '?':
+    		case '?':
         		printf("Unknown arg %c\n", optopt);
         		help_exit(argv[0], EXIT_FAILURE, (void *)opt);
       		break;
@@ -69,11 +70,11 @@ struct options* parse_args(int argc, char *argv[]){
  * \args exit_code exit code
  */
 void help_exit(char *program_name, int exit_code, void *toFree){
-	const char *help = " FuckBrainFuck interpreter, 2017 \n " 
+	const char *help = "\t\tFuckBrainFuck interpreter, 2017 \n " 
 						"Usage: %s [options] file\n" 
 						"Options:\n"
-						"\t-b, --bitwidth <args> 	Cell size in bit, default 8. Accepted args are 8, 16, 32.\n"
-						"\t-h, --help 				Show this help and exit\n";
+						"\t-b, <args> 	Cell size in bit, default 8. Accepted args are 8, 16, 32.\n"
+						"\t-h, Show this help and exit\n";
 	printf(help, program_name);
 	free(toFree);
 	exit(exit_code);

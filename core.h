@@ -33,6 +33,7 @@ struct brackets {
 /*union cellmem{
 	char bit8
 }*/
+
 struct memory{
 	unsigned int pc;
 	unsigned int accumulator;
@@ -44,6 +45,7 @@ struct memory{
 	enum programType type;
 	//struct brackets *bracketsArray;
 	//unsigned int nOfBrackets;
+	struct options *opt;
 };
 
 typedef uint8_t u8;
@@ -54,5 +56,5 @@ typedef uint32_t u32;
 
 struct memory *load_file(char *filename, struct memory *memory);
 void exec (struct memory *program);
-struct memory *prepare_memory(enum programType ttype);
+struct memory *prepare_memory(struct options *opt);
 void clean_exit(struct memory *program, int exit_type);
