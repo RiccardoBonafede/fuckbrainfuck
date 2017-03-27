@@ -36,32 +36,32 @@ void decrement_acc(struct memory *program);
  * \arg filename the name of the file
  * \arg the memory struct that has to be allocated before
  */
-struct memory *load_file(char *filename, struct memory *memory){
+struct memory *load_file(char *filename, struct memory *memory) {
 	FILE *progFd;
 	size_t allocatedSize;
-	int readedChars=0;
+	int readedChars = 0;
 
 	memory->programCode = malloc(ARRAY_START_LENGHT * sizeof(char));
-	if(memory->programCode == NULL) _mem_allocation_error(__func__);
+	if (memory->programCode == NULL) _mem_allocation_error(__func__);
 
 	allocatedSize = ARRAY_START_LENGHT * sizeof(char);
 
 	/*Open file and chek if all is ok*/
 	progFd = fopen(filename, "r");
-	if(progFd==NULL){
+	if (progFd == NULL) {
 		fprintf(stderr, "<CRITICAL:%s>\n Error: Cannot open file %s\n", __func__ , filename);
 		exit(EXIT_FAILURE);
 	};
 
 	//Legge il codice dal file
-	while(!feof(progFd)){
-		char c=0;
+	while (!feof(progFd)) {
+		char c = 0;
 
 		fscanf(progFd, "%c", &c);
-		
-		if(strchr(VALID_CHARACTERS, c) && c!=0x00){	//ignora tutto il resto
+
+		if (strchr(VALID_CHARACTERS, c) && c != 0x00) {	//ignora tutto il resto
 			allocatedSize = insertIntoArray ((void **) &memory->programCode, &c, sizeof(c), readedChars * sizeof(c), allocatedSize);
-			readedChars++;	
+			readedChars++;
 		}
 
 	}
@@ -71,105 +71,105 @@ struct memory *load_file(char *filename, struct memory *memory){
 
 }
 
-struct memory *prepare_memory(struct options *opt){
+struct memory *prepare_memory(struct options *opt) {
 	struct memory *program;
 
 	program = calloc(1, sizeof(struct memory));
 
-	if(program== NULL) _mem_allocation_error(__func__);
+	if (program == NULL) _mem_allocation_error(__func__);
 
 	program->type = opt->type;
 	program->stackSize = START_STACK_SIZE;
 	program->programStack = calloc(program->stackSize, sizeof(char));
 
-	if(program->programStack == NULL)_mem_allocation_error(__func__);
+	if (program->programStack == NULL)_mem_allocation_error(__func__);
 
 	program->opt = opt;
 	return program;
 }
 
 
-void exec (struct memory *program){
-	while(program->pc <= program->programSize){
+void exec (struct memory *program) {
+	while (program->pc <= program->programSize) {
 
 		//if(debug)printf("[%i::%i::%c] <%i> = %i\n", program->cyclesNumber, program->pc,program->programCode[program->pc],program->accumulator, program->programStack[program->accumulator]);
 
-		switch(program->programCode[program->pc]){
-			case T_ADD:
-				INC_CURRENT_STACK_CELL(program);
-				break;
-			case T_SUB:
-				DEC_CURRENT_STACK_CELL(program);
-				break;
-			case T_MOV_R:
-				INCREMENT_ACC(program);
-				break;
-			
-			case T_MOV_L:
-				DECREMENT_ACC(program);
-				break;
-			case T_PRINT:
-				putchar(GET_CURRENT_STACK_CELL(program));
-				break;
-			case T_INPUT:
-				ASSIGN_TO_CURRENT_STACK_CELL(program, getchar());
-				fflush(stdin);
-				break;
-			case T_WHILE_START:
-				OPEN_WHILE(program);
-				break;
-			case T_WHILE_END:
-				CLOSE_WHILE(program);					
-				break;
-			default:
-				fprintf(stderr, "<WARNING:%s>\n Unexpected %c, something weird is happening here.\n", __func__ , program->programCode[program->pc]);
-				break;
-			}
-			
-			program->cyclesNumber++; //incrementa numero di cicli
-			program->pc++; //incrementa program counter
-	
+		switch (program->programCode[program->pc]) {
+		case T_ADD:
+			INC_CURRENT_STACK_CELL(program);
+			break;
+		case T_SUB:
+			DEC_CURRENT_STACK_CELL(program);
+			break;
+		case T_MOV_R:
+			INCREMENT_ACC(program);
+			break;
+
+		case T_MOV_L:
+			DECREMENT_ACC(program);
+			break;
+		case T_PRINT:
+			putchar(GET_CURRENT_STACK_CELL(program));
+			break;
+		case T_INPUT:
+			ASSIGN_TO_CURRENT_STACK_CELL(program, getchar());
+			fflush(stdin);
+			break;
+		case T_WHILE_START:
+			OPEN_WHILE(program);
+			break;
+		case T_WHILE_END:
+			CLOSE_WHILE(program);
+			break;
+		default:
+			fprintf(stderr, "<WARNING:%s>\n Unexpected %c, something weird is happening here.\n", __func__ , program->programCode[program->pc]);
+			break;
 		}
+
+		program->cyclesNumber++; //incrementa numero di cicli
+		program->pc++; //incrementa program counter
+
+	}
 }
 /**
 * Increment the stack cell that is currently pointed by the accumulator
 *
 */
-void increment_current_stack_cell(struct memory *program){
+void increment_current_stack_cell(struct memory *program) {
 
 	void * current_stack = program->programStack + GET_STACK_OFFSET(program);
-	
+
 	u32 value = GET_CURRENT_STACK_CELL(program);
 
-	switch(program->type){
-		case BIT8:
-			if(value >= UINT8_MAX){
-				*((u8 *)current_stack) = 0;
-				break;
-			}
-			(*((u8 *)current_stack))++;
+	switch (program->type) {
+	case BIT8:
+		if (value >= UINT8_MAX) {
+			*((u8 *)current_stack) = 0;
 			break;
+		}
+		(*((u8 *)current_stack))++;
+		break;
 
-		case BIT16:
-			if(value >= UINT16_MAX){
-				*((u16 *)current_stack) = 0;
-				break;
-			}
-			(*((u16 *)current_stack))++;
+	case BIT16:
+		if (value >= UINT16_MAX) {
+			*((u16 *)current_stack) = 0;
 			break;
+		}
+		(*((u16 *)current_stack))++;
+		break;
 
-		case BIT32:
-			if(value >= UINT32_MAX){
-				*((u32 *)current_stack) = 0;
-				break;
-			}
-			(*((u32 *)current_stack))++;
+	case BIT32:
+		if (value >= UINT32_MAX) {
+			*((u32 *)current_stack) = 0;
 			break;
-			break;
-		default:
-			fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
-			clean_exit(program, EXIT_FAILURE);
-			break;
+		}
+		(*((u32 *)current_stack))++;
+		break;
+		break;
+	default:
+		fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
+		clean_exit(program, EXIT_FAILURE);
+		break;
 	}
 
 }
@@ -177,145 +177,145 @@ void increment_current_stack_cell(struct memory *program){
 * decrement the stack cell that is currently pointed by the accumulator
 *
 */
-void decrement_current_stack_cell(struct memory *program){
+void decrement_current_stack_cell(struct memory *program) {
 	void * current_stack = GET_CURRENT_STACK_PTR(program);
 	u32 value = GET_CURRENT_STACK_CELL(program) ;
 
-	switch(program->type){
-		case BIT8:
-			if(value == 0){
-				*((u8 *)current_stack) = UINT8_MAX;
-				break;
-			}
-			(*((u8 *)current_stack))--;
+	switch (program->type) {
+	case BIT8:
+		if (value == 0) {
+			*((u8 *)current_stack) = UINT8_MAX;
 			break;
+		}
+		(*((u8 *)current_stack))--;
+		break;
 
-		case BIT16:
-			if(value == 0){
-				*((u16 *)current_stack) = UINT16_MAX;
-				break;
-			}
-			(*((u16 *)current_stack))--;
+	case BIT16:
+		if (value == 0) {
+			*((u16 *)current_stack) = UINT16_MAX;
 			break;
+		}
+		(*((u16 *)current_stack))--;
+		break;
 
-		case BIT32:
-			if(value == 0){
-				*((u32 *)current_stack) = UINT32_MAX;
-				break;
-			}
-			(*((u32 *)current_stack))--;
+	case BIT32:
+		if (value == 0) {
+			*((u32 *)current_stack) = UINT32_MAX;
 			break;
-		default:
-			fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
-			clean_exit(program, EXIT_FAILURE);
-			break;
+		}
+		(*((u32 *)current_stack))--;
+		break;
+	default:
+		fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
+		clean_exit(program, EXIT_FAILURE);
+		break;
 	}
 
 }
 /*Return current stack cell value, 32 for easyness*/
-u32 get_current_stack_cell(struct memory *program){
+u32 get_current_stack_cell(struct memory *program) {
 	void * current_stack = GET_CURRENT_STACK_PTR(program);
-	switch(program->type){
-		case BIT8:
-			return (u32)*((u8 *)current_stack);
-		case BIT16:
-			return (u32)*((u16 *)current_stack);
-		case BIT32:
-			return *((u32 *)current_stack);
-		default:
-			fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
-			clean_exit(program, EXIT_FAILURE);
+	switch (program->type) {
+	case BIT8:
+		return (u32) * ((u8 *)current_stack);
+	case BIT16:
+		return (u32) * ((u16 *)current_stack);
+	case BIT32:
+		return *((u32 *)current_stack);
+	default:
+		fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
+		clean_exit(program, EXIT_FAILURE);
 	}
 	return 0;
 }
 
-void assign_to_current_stack_cell(struct memory *program, u32 value){
+void assign_to_current_stack_cell(struct memory *program, u32 value) {
 	void * current_stack = GET_CURRENT_STACK_PTR(program);
 
-	switch(program->type){
-		case BIT8:
-			 *((u8 *)current_stack) = (u8) value;
-			 break;
-		case BIT16:
-			 *((u16 *)current_stack) = (u16) value;
-			 break;
-		case BIT32:
-			*((u32 *)current_stack) = (u32) value;
-			break;
-		default:
-			fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
-			clean_exit(program, EXIT_FAILURE);
-			break;
-	}	
+	switch (program->type) {
+	case BIT8:
+		*((u8 *)current_stack) = (u8) value;
+		break;
+	case BIT16:
+		*((u16 *)current_stack) = (u16) value;
+		break;
+	case BIT32:
+		*((u32 *)current_stack) = (u32) value;
+		break;
+	default:
+		fprintf(stderr, "%s:Error, programType = %i\n", __func__, program->type);
+		clean_exit(program, EXIT_FAILURE);
+		break;
+	}
 }
-void increment_acc(struct memory *program){
+void increment_acc(struct memory *program) {
 	/* Controlla che la memoria allocata sia sufficente, se no rialloca e incrementa*/
-	if(GET_STACK_OFFSET(program) >= (program->stackSize-1)){
-		program->programStack=realloc(program->programStack, program->stackSize * DOUBLING_CONST);
+	if (GET_STACK_OFFSET(program) >= (program->stackSize - 1)) {
+		program->programStack = realloc(program->programStack, program->stackSize * DOUBLING_CONST);
 		memset(program->programStack +  program->stackSize, 0, program->stackSize - 1);
 
-		if(program->programStack==0)_mem_allocation_error(__func__);
-			program->stackSize *= DOUBLING_CONST;
-		}
+		if (program->programStack == 0)_mem_allocation_error(__func__);
+		program->stackSize *= DOUBLING_CONST;
+	}
 	program->accumulator++;
 }
-void decrement_acc(struct memory *program){
+void decrement_acc(struct memory *program) {
 	/*If acc == 0 then ignore and throw a warning*/
-	if(program->accumulator>=1)
+	if (program->accumulator >= 1)
 		program->accumulator--;
 	else
 		perror("WARNING: decrementing accumulator while is zero.\n");
-	
+
 }
 
-void open_while(struct memory *program){
-	if(GET_CURRENT_STACK_CELL(program)==0){
-					int brackets=0;
+void open_while(struct memory *program) {
+	if (GET_CURRENT_STACK_CELL(program) == 0) {
+		int brackets = 0;
 
-					while( program->pc < program->programSize){
-						
-						if(program->programCode[++program->pc] == T_WHILE_START)
-							brackets++;
+		while ( program->pc < program->programSize) {
 
-						else if(program->programCode[program->pc] == T_WHILE_END){
-							if(brackets==0){
-								break;
-							}
-							else
-								brackets--;
-						}
-					}
+			if (program->programCode[++program->pc] == T_WHILE_START)
+				brackets++;
+
+			else if (program->programCode[program->pc] == T_WHILE_END) {
+				if (brackets == 0) {
+					break;
 				}
-					if( program->pc == program->programSize && program->programCode[program->pc] != T_WHILE_END){
-						fprintf(stderr, "<CRITICAL:%s>\n Unexpected end of file. Maybe missing an %c?\n", __func__ ,T_WHILE_END);
-						clean_exit(program, EXIT_FAILURE);
-					}
+				else
+					brackets--;
+			}
+		}
+	}
+	if ( program->pc == program->programSize && program->programCode[program->pc] != T_WHILE_END) {
+		fprintf(stderr, "<CRITICAL:%s>\n Unexpected end of file. Maybe missing an %c?\n", __func__ , T_WHILE_END);
+		clean_exit(program, EXIT_FAILURE);
+	}
 
 }
 
-void close_while(struct memory *program){
-	if(GET_CURRENT_STACK_CELL(program)!=0){
-					int brackets=0;
-					while(program->pc > 0){
-						
-						if(program->programCode[--program->pc]==T_WHILE_END)
-							brackets++;
-							
-						else if(program->programCode[program->pc]==T_WHILE_START){
-							if(brackets==0)
-								break;	
-							else
-								brackets--;
-						}
-					}
-				}
-				if( program->pc == 0 && program->programCode[program->pc] != T_WHILE_START){
-						fprintf(stderr, "<CRITICAL:%s>\n Unexpected %c.\n", __func__ ,T_WHILE_END);
-						clean_exit(program, EXIT_FAILURE);
-					}
-	
+void close_while(struct memory *program) {
+	if (GET_CURRENT_STACK_CELL(program) != 0) {
+		int brackets = 0;
+		while (program->pc > 0) {
+
+			if (program->programCode[--program->pc] == T_WHILE_END)
+				brackets++;
+
+			else if (program->programCode[program->pc] == T_WHILE_START) {
+				if (brackets == 0)
+					break;
+				else
+					brackets--;
+			}
+		}
+	}
+	if ( program->pc == 0 && program->programCode[program->pc] != T_WHILE_START) {
+		fprintf(stderr, "<CRITICAL:%s>\n Unexpected %c.\n", __func__ , T_WHILE_END);
+		clean_exit(program, EXIT_FAILURE);
+	}
+
 }
-void clean_exit(struct memory *program, int exit_type){
+void clean_exit(struct memory *program, int exit_type) {
 
 	free(program->programStack);
 	free(program->programCode);
